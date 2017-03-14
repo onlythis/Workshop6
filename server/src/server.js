@@ -87,6 +87,7 @@ app.get('/user/:userid/feed', function(req, res) {
 });
 
 var StatusUpdateSchema = require('./schemas/statusupdate.json');
+var CommentSchema = require('./schemas/comment.json');
 var validate = require('express-jsonschema').validate;
 var writeDocument = database.writeDocument;
 var addDocument = database.addDocument;
@@ -155,13 +156,40 @@ app.post('/feeditem', validate({ body: StatusUpdateSchema }), function(req, res)
   }
 });
 
+function postComment(feedItemId, contents) {
+  var feedItem = readDocument('feedItems', feedItemId);
+  var newComment = {
+    "author": contents.author,
+    "contents": contents.contents,
+    "postDate": new Date().getTime(),
+    "likeCounter": []
+  }
+  feedItem.comments.push(newComment);
+  writeDocument('feedItems', feedItem);
+  return newComment;
+}
+
+// POST comment
+app.post('/feeditem/:feeditemid/comments', validate({body: CommentSchema}), function(req, res) {
+  var body = req.body;
+  var feedItemId = body.feedItemId;
+  var fromUser = getUserIdFromToken(req.get('Authorization'));
+  if(fromUser === body.author) {
+    var newComment = postComment(feedItemId, body);
+    res.status(201);
+    res.set('Location', '/feeditem/' + fromUser + '/comments/' +newComment._id);
+    res.send(getFeedItemSync(feedItemId));
+  } else {
+    res.status(401).end();
+  }
+});
+
 /**
  * Translate JSON Schema Validation failures into error 400s.
  */
 app.use(function(err, req, res, next) {
   if (err.name === 'JsonSchemaValidation') {
-    console.log(req.body);
-    console.log(getUserIdFromToken(req.get('Authorization')));
+    console.log("jsonschemaerror");
     // Set a bad request http response status
     res.status(400).end();
   } else {

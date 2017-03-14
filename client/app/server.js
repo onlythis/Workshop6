@@ -10,23 +10,6 @@ function emulateServerReturn(data, cb) {
   }, 4);
 }
 
-/**
- * Resolves a feed item. Internal to the server, since it's synchronous.
- */
-function getFeedItemSync(feedItemId) {
-  var feedItem = readDocument('feedItems', feedItemId);
-  // Resolve 'like' counter.
-  feedItem.likeCounter = feedItem.likeCounter.map((id) => readDocument('users', id));
-  // Assuming a StatusUpdate. If we had other types of FeedItems in the DB, we would
-  // need to check the type and have logic for each type.
-  feedItem.contents.author = readDocument('users', feedItem.contents.author);
-  // Resolve comment author.
-  feedItem.comments.forEach((comment) => {
-    comment.author = readDocument('users', comment.author);
-  });
-  return feedItem;
-}
-
  /**
   * Emulates a REST call to get the feed data for a particular user.
   */
@@ -56,16 +39,13 @@ function getFeedItemSync(feedItemId) {
  * Adds a new comment to the database on the given feed item.
  */
 export function postComment(feedItemId, author, contents, cb) {
-  var feedItem = readDocument('feedItems', feedItemId);
-  feedItem.comments.push({
-    "author": author,
-    "contents": contents,
-    "postDate": new Date().getTime(),
-    "likeCounter": []
+  sendXHR('POST', '/feeditem/' + feedItemId + '/comments', {
+    feedItemId: feedItemId,
+    author: author,
+    contents: contents
+  }, (xhr) => {
+    cb(JSON.parse(xhr.responseText));
   });
-  writeDocument('feedItems', feedItem);
-  // Return a resolved version of the feed item.
-  emulateServerReturn(getFeedItemSync(feedItemId), cb);
 }
 
 /**
@@ -152,7 +132,8 @@ function sendXHR(verb, resource, body, cb) {
   var xhr = new XMLHttpRequest();
   xhr.open(verb, resource);
   xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-
+  console.log("before event listener");
+  console.log(verb, resource, body, cb);
   // The below comment tells ESLint that FacebookError is a global.
   // Otherwise, ESLint would complain about it! (See what happens in Atom if
   // you remove the comment...)
@@ -202,6 +183,8 @@ function sendXHR(verb, resource, body, cb) {
       // Tell the server we are sending JSON.
       xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
       // Convert body into a JSON string.
+      console.log("clientapp");
+      console.log(body);
       xhr.send(JSON.stringify(body));
       break;
     default:
