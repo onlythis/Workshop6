@@ -6,7 +6,7 @@ export default class Comment extends React.Component {
   didUserLike() {
     return this.props.likeCounter.indexOf(4) !== -1;
   }
-  
+
   handleLikeClick(e) {
     e.preventDefault();
     if (e.button === 0) {
@@ -17,7 +17,7 @@ export default class Comment extends React.Component {
       }
     }
   }
-  
+
   render() {
     return (
       <div>

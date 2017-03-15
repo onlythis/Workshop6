@@ -1,15 +1,3 @@
-import {readDocument, writeDocument} from './database.js';
-
-/**
- * Emulates how a REST call is *asynchronous* -- it calls your function back
- * some time in the future with data.
- */
-function emulateServerReturn(data, cb) {
-  setTimeout(() => {
-    cb(data);
-  }, 4);
-}
-
  /**
   * Emulates a REST call to get the feed data for a particular user.
   */
@@ -71,28 +59,19 @@ export function unlikeFeedItem(feedItemId, userId, cb) {
 /**
  * Adds a 'like' to a comment.
  */
-export function likeComment(feedItemId, commentIdx, userId, cb) {
-  var feedItem = readDocument('feedItems', feedItemId);
-  var comment = feedItem.comments[commentIdx];
-  comment.likeCounter.push(userId);
-  writeDocument('feedItems', feedItem);
-  comment.author = readDocument('users', comment.author);
-  emulateServerReturn(comment, cb);
-}
+ export function likeComment(feedItemId, commentIdx, userId, cb) {
+   sendXHR('PUT', '/feeditem/' + feedItemId + '/comments/' + commentIdx + '/likelist/' + userId, undefined, (xhr) => {
+     cb(JSON.parse(xhr.responseText));
+   });
+ }
 
 /**
  * Removes a 'like' from a comment.
  */
 export function unlikeComment(feedItemId, commentIdx, userId, cb) {
-  var feedItem = readDocument('feedItems', feedItemId);
-  var comment = feedItem.comments[commentIdx];
-  var userIndex = comment.likeCounter.indexOf(userId);
-  if (userIndex !== -1) {
-    comment.likeCounter.splice(userIndex, 1);
-    writeDocument('feedItems', feedItem);
-  }
-  comment.author = readDocument('users', comment.author);
-  emulateServerReturn(comment, cb);
+  sendXHR('DELETE', '/feeditem/' + feedItemId + '/comments/' + commentIdx + '/likelist/' + userId, undefined, (xhr) => {
+    cb(JSON.parse(xhr.responseText));
+  });
 }
 
 /**
@@ -132,8 +111,6 @@ function sendXHR(verb, resource, body, cb) {
   var xhr = new XMLHttpRequest();
   xhr.open(verb, resource);
   xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-  console.log("before event listener");
-  console.log(verb, resource, body, cb);
   // The below comment tells ESLint that FacebookError is a global.
   // Otherwise, ESLint would complain about it! (See what happens in Atom if
   // you remove the comment...)
@@ -183,8 +160,6 @@ function sendXHR(verb, resource, body, cb) {
       // Tell the server we are sending JSON.
       xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
       // Convert body into a JSON string.
-      console.log("clientapp");
-      console.log(body);
       xhr.send(JSON.stringify(body));
       break;
     default:

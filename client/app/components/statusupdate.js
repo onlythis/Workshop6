@@ -81,7 +81,6 @@ export default class StatusUpdate extends React.Component {
   }
 
   render() {
-    console.log(this.props.author._id);
     return (
       <div>
         <div className="row">
